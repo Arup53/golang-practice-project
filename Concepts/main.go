@@ -2,6 +2,9 @@ package main
 
 import "fmt"
 
+// why receiver function needs to be pointer receiver in go
+// from oops sense, we are directly  modifing the properties of a object so, in go we use pointer receiver or return pointer to modify the struct(properties)
+
 type Koi struct {
 	Name   string
 	Origin string

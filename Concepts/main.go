@@ -38,6 +38,9 @@ type Transaction struct{
 	ammount   int
 }
 
+
+
+// -------- channels concepts-------------- 
 func testChannelAsArgument(testChan <-chan int, num int ){
 
 	msgValue := <-testChan
@@ -50,7 +53,7 @@ func testChannelAsArgument(testChan <-chan int, num int ){
 func testChannelAsArgumentMultipleValueReceiver(values <-chan Transaction ){
     for value := range values{
        msg :=value
-	   fmt.Println("Hey bro my msg is", msg.txnType, "and my id is ", msg.accountID, "and ammount ", msg.ammount)
+	   fmt.Println("Hey bro your msg is", msg.txnType, "and your id is ", msg.accountID, "and ammount ", msg.ammount)
 	}
 }
 

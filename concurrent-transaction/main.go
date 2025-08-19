@@ -78,6 +78,7 @@ func preocessTransaction(trnChan <-chan Transaction, accounts map[int]*BankAccou
 				trx.resultChan<-fmt.Sprintf(
                     "Deposit successful, new balance: %d", account.balance,
                 )
+				close(trx.resultChan)
 			
 			case "withdraw":
 				if trx.amount <= account.balance {
@@ -88,14 +89,40 @@ func preocessTransaction(trnChan <-chan Transaction, accounts map[int]*BankAccou
 				} else {
 					trx.resultChan <-"Withdrawal failed: insufficient funds"
 				}
+				 close(trx.resultChan)
 			default:
 				 trx.resultChan <- "Unknown transaction type"
+				 close(trx.resultChan)
 
 		}
 		}()
 	}
 }
 
+
+func fanInResults(cs ...chan string) <-chan string {
+	out := make(chan string)
+	var wg sync.WaitGroup
+	wg.Add(len(cs))
+    
+	output:= func (c <-chan string)  {
+		for msg := range c{
+			out <-msg
+		}
+		wg.Done()
+	}
+    // start separate go routines for each input channels
+	for _,ch:= range cs{
+		go output(ch)
+	}
+
+	go func ()  {
+	 wg.Wait()
+	 close(out)	
+	}()
+    
+    return out
+}
 
 
 func main() {
@@ -116,17 +143,33 @@ func main() {
 	go preocessTransaction(trxChan, accounts)
     
 	// ------------------ Blocking operation i.e. although processTransaction runs spearatly main go routine prints result one after another not true concurrency------------- 
-	result1:= make(chan string)
-	trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
-	fmt.Println(<-result1)
+	// result1:= make(chan string)
+	// trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
+	// fmt.Println(<-result1)
       
-    result3:=make(chan string)
-	trxChan <-Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}
-	fmt.Println(<-result3)
+    // result3:=make(chan string)
+	// trxChan <-Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}
+	// fmt.Println(<-result3)
 
-	result2:= make(chan string)
-	trxChan<-Transaction{accountID: 2,txnType: "withdraw", amount: 100, resultChan: result2}
-    fmt.Println(<-result2)
+	// result2:= make(chan string)
+	// trxChan<-Transaction{accountID: 2,txnType: "withdraw", amount: 100, resultChan: result2}
+    // fmt.Println(<-result2)
+
+	// --------------------- Fan in pattern for printing results randomaly or concurrently not sequenctial blocking
+
+	result1 := make(chan string, 1)
+	result2 := make(chan string, 1)
+	result3 := make(chan string, 1)
+
+	trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
+	trxChan <- Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}
+	trxChan <- Transaction{accountID: 2, txnType: "withdraw", amount: 100, resultChan: result2}
+
+	results := fanInResults(result1, result2, result3)
+
+	for res:= range results{
+		fmt.Println(res)
+	}
 	
 
 	close(trxChan)

@@ -58,46 +58,86 @@ type Transaction struct {
 // }
 
 
-func preocessTransaction(trnChan <-chan Transaction, accounts map[int]*BankAccount){
+// func preocessTransaction(trnChan <-chan Transaction, accounts map[int]*BankAccount){
 
-	for trx := range trnChan {
-        account, exist := accounts[trx.accountID]
+// 	for trx := range trnChan {
+//         account, exist := accounts[trx.accountID]
 		
-		if !exist{
-			trx.resultChan <-"Account not found"
+// 		if !exist{
+// 			trx.resultChan <-"Account not found"
+// 			continue
+// 		}
+
+// 		account.mutex.Lock()
+// 		func ()  {
+// 		defer account.mutex.Unlock()
+		
+// 		switch trx.txnType{
+// 		case "deposit":
+// 				account.balance += trx.amount
+// 				trx.resultChan<-fmt.Sprintf(
+//                     "Deposit successful for, new balance: %d", account.balance,
+//                 )
+// 				close(trx.resultChan)
+			
+// 			case "withdraw":
+// 				if trx.amount <= account.balance {
+//                       account.balance -= trx.amount
+// 					  trx.resultChan<-fmt.Sprintf(
+//                     "Withdraw successful, new balance: %d", account.balance,
+//                 )
+// 				} else {
+// 					trx.resultChan <-"Withdrawal failed: insufficient funds"
+// 				}
+// 				 close(trx.resultChan)
+// 			default:
+// 				 trx.resultChan <- "Unknown transaction type"
+// 				 close(trx.resultChan)
+
+// 		}
+// 		}()
+// 	}
+// }
+
+// ------------ processtransaction sends multiple values in channel for each transcation------------ 
+func processTransaction(trxChan <-chan Transaction, accounts map[int]*BankAccount) {
+	for trx := range trxChan {
+		account, exists := accounts[trx.accountID]
+		if !exists {
+			trx.resultChan <- "Account not found"
+			close(trx.resultChan) // close after all updates
 			continue
 		}
 
 		account.mutex.Lock()
-		func ()  {
-		defer account.mutex.Unlock()
-		
-		switch trx.txnType{
-		case "deposit":
-				account.balance += trx.amount
-				trx.resultChan<-fmt.Sprintf(
-                    "Deposit successful, new balance: %d", account.balance,
-                )
-				close(trx.resultChan)
-			
-			case "withdraw":
-				if trx.amount <= account.balance {
-                      account.balance -= trx.amount
-					  trx.resultChan<-fmt.Sprintf(
-                    "Withdraw successful, new balance: %d", account.balance,
-                )
-				} else {
-					trx.resultChan <-"Withdrawal failed: insufficient funds"
-				}
-				 close(trx.resultChan)
-			default:
-				 trx.resultChan <- "Unknown transaction type"
-				 close(trx.resultChan)
+		go func(trx Transaction, account *BankAccount) {
+			defer account.mutex.Unlock()
+			defer close(trx.resultChan) // close when transaction fully done
 
-		}
-		}()
+			trx.resultChan <- fmt.Sprintf("Starting transaction... %d", account.accountID)
+
+			switch trx.txnType {
+			case "deposit":
+				trx.resultChan <- fmt.Sprintf("Depositing %d", trx.amount)
+				account.balance += trx.amount
+				trx.resultChan <- fmt.Sprintf("Deposit successful, new balance: %d", account.balance)
+
+			case "withdraw":
+				trx.resultChan <- fmt.Sprintf("Attempting to withdraw %d", trx.amount)
+				if account.balance >= trx.amount {
+					account.balance -= trx.amount
+					trx.resultChan <- fmt.Sprintf("Withdrawal successful, new balance: %d", account.balance)
+				} else {
+					trx.resultChan <- "Withdrawal failed: insufficient funds"
+				}
+
+			default:
+				trx.resultChan <- "Unknown transaction type"
+			}
+		}(trx, account)
 	}
 }
+
 
 
 func fanInResults(cs ...chan string) <-chan string {
@@ -140,7 +180,7 @@ func main() {
 		3:{accountID: 3, balance: 7000},
 	}
 
-	go preocessTransaction(trxChan, accounts)
+	go processTransaction(trxChan, accounts)
     
 	// ------------------ Blocking operation i.e. although processTransaction runs spearatly main go routine prints result one after another not true concurrency------------- 
 	// result1:= make(chan string)
@@ -157,9 +197,9 @@ func main() {
 
 	// --------------------- Fan in pattern for printing results randomaly or concurrently not sequenctial blocking
 
-	result1 := make(chan string, 1)
-	result2 := make(chan string, 1)
-	result3 := make(chan string, 1)
+	result1 := make(chan string)
+	result2 := make(chan string)
+	result3 := make(chan string)
 
 	trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
 	trxChan <- Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}

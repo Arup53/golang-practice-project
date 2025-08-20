@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
-	"time"
 )
 
 type BankAccount struct {
@@ -59,6 +58,8 @@ type Transaction struct {
 // 	}
 // }
 
+
+// step-6 --- one single receiver channel for multiple sender ----------
 
 func processTransaction1(trnChan <-chan Transaction, accounts map[int]*BankAccount){
 

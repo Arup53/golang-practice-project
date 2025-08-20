@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"sync"
 )
 
@@ -58,49 +59,49 @@ type Transaction struct {
 // }
 
 
-// func preocessTransaction(trnChan <-chan Transaction, accounts map[int]*BankAccount){
+func processTransaction1(trnChan <-chan Transaction, accounts map[int]*BankAccount){
 
-// 	for trx := range trnChan {
-//         account, exist := accounts[trx.accountID]
+	for trx := range trnChan {
+        account, exist := accounts[trx.accountID]
 		
-// 		if !exist{
-// 			trx.resultChan <-"Account not found"
-// 			continue
-// 		}
+		if !exist{
+			trx.resultChan <-"Account not found"
+			continue
+		}
 
-// 		account.mutex.Lock()
-// 		func ()  {
-// 		defer account.mutex.Unlock()
+		account.mutex.Lock()
+		func ()  {
+		defer account.mutex.Unlock()
 		
-// 		switch trx.txnType{
-// 		case "deposit":
-// 				account.balance += trx.amount
-// 				trx.resultChan<-fmt.Sprintf(
-//                     "Deposit successful for, new balance: %d", account.balance,
-//                 )
-// 				close(trx.resultChan)
+		switch trx.txnType{
+		case "deposit":
+				account.balance += trx.amount
+				trx.resultChan<-fmt.Sprintf(
+                    "Deposit successful for, new balance: %d", account.balance,
+                )
+				close(trx.resultChan)
 			
-// 			case "withdraw":
-// 				if trx.amount <= account.balance {
-//                       account.balance -= trx.amount
-// 					  trx.resultChan<-fmt.Sprintf(
-//                     "Withdraw successful, new balance: %d", account.balance,
-//                 )
-// 				} else {
-// 					trx.resultChan <-"Withdrawal failed: insufficient funds"
-// 				}
-// 				 close(trx.resultChan)
-// 			default:
-// 				 trx.resultChan <- "Unknown transaction type"
-// 				 close(trx.resultChan)
+			case "withdraw":
+				if trx.amount <= account.balance {
+                      account.balance -= trx.amount
+					  trx.resultChan<-fmt.Sprintf(
+                    "Withdraw successful, new balance: %d", account.balance,
+                )
+				} else {
+					trx.resultChan <-"Withdrawal failed: insufficient funds"
+				}
+				 close(trx.resultChan)
+			default:
+				 trx.resultChan <- "Unknown transaction type"
+				 close(trx.resultChan)
 
-// 		}
-// 		}()
-// 	}
-// }
+		}
+		}()
+	}
+}
 
 // ------------ processtransaction sends multiple values in channel for each transcation------------ 
-func processTransaction(trxChan <-chan Transaction, accounts map[int]*BankAccount) {
+func processTransaction2(trxChan <-chan Transaction, accounts map[int]*BankAccount) {
 	for trx := range trxChan {
 		account, exists := accounts[trx.accountID]
 		if !exists {
@@ -164,15 +165,35 @@ func fanInResults(cs ...chan string) <-chan string {
     return out
 }
 
+// --------- step 7 client -------------
+
+func client(id int, trxChan chan <-Transaction, accounts []int, wg *sync.WaitGroup){
+	defer wg.Done()
+
+	for i:=0; i<5; i++{
+		accID := accounts[rand.Intn(len(accounts))]
+		txnType := []string{"deposit","withdraw"}[rand.Intn(2)]
+		amount := rand.Intn(2000)
+
+		resultChan := make(chan string, 1)
+
+		trxChan<-Transaction{
+			accountID: accID,
+			txnType: txnType,
+			amount: amount,
+			resultChan: resultChan,
+		}
+
+		res :=<-resultChan
+		fmt.Printf("Client %d got result: %s\n", id, res)
+	}
+}
+
 
 func main() {
 	trxChan := make(chan Transaction)
     
-	// accountSlice := []BankAccount{
-	// 	{accountID: 1, balance: 5000}, 
-	// 	{accountID: 2, balance: 3000},
-	// 	{accountID: 3, balance: 7000},
-	// }
+
 
 	accounts := map[int]*BankAccount{
 		1:{accountID: 1, balance: 5000}, 
@@ -180,7 +201,7 @@ func main() {
 		3:{accountID: 3, balance: 7000},
 	}
 
-	go processTransaction(trxChan, accounts)
+	go processTransaction1(trxChan, accounts)
     
 	// ------------------ Blocking operation i.e. although processTransaction runs spearatly main go routine prints result one after another not true concurrency------------- 
 	// result1:= make(chan string)
@@ -197,20 +218,29 @@ func main() {
 
 	// --------------------- Fan in pattern for printing results randomaly or concurrently not sequenctial blocking
 
-	result1 := make(chan string)
-	result2 := make(chan string)
-	result3 := make(chan string)
+	// result1 := make(chan string,1)
+	// result2 := make(chan string,1)
+	// result3 := make(chan string,1)
 
-	trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
-	trxChan <- Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}
-	trxChan <- Transaction{accountID: 2, txnType: "withdraw", amount: 100, resultChan: result2}
+	// trxChan <- Transaction{accountID: 1, txnType: "deposit", amount: 1000, resultChan: result1}
+	// trxChan <- Transaction{accountID: 3, txnType: "withdraw", amount: 10000, resultChan: result3}
+	// trxChan <- Transaction{accountID: 2, txnType: "withdraw", amount: 100, resultChan: result2}
 
-	results := fanInResults(result1, result2, result3)
+	// results := fanInResults(result1, result2, result3)
 
-	for res:= range results{
-		fmt.Println(res)
+	// for res:= range results{
+	// 	fmt.Println(res)
+	// }
+
+
+	// ---------------- Multiple clients with random transactions --------------
+	var wg sync.WaitGroup
+
+	for i:=1; i<=5;i++ {
+        wg.Add(1)
+		go client(i, trxChan, []int{1,2,3}, &wg)  // []int{1,2,3} this is just 3 account id i defined
 	}
-	
+	wg.Wait()
 
 	close(trxChan)
 }

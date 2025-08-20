@@ -184,7 +184,7 @@ func client(id int, trxChan chan <-Transaction, accounts []int, wg *sync.WaitGro
 			resultChan: resultChan,
 		}
 
-		res :=<-resultChan
+		res := <-resultChan // blocks the next line execution until a value is received in this receiving channel , here, resultChan  is receving channel 
 		fmt.Printf("Client %d got result: %s\n", id, res)
 	}
 }

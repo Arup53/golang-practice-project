@@ -171,7 +171,7 @@ func fanInResults(cs ...chan string) <-chan string {
 func client(id int, trxChan chan <-Transaction, accounts []int, wg *sync.WaitGroup){
 	defer wg.Done()
 
-	rand.Seed(time.Now().UnixNano() + int64(id)) // different seed per client
+	// rand.Seed(time.Now().UnixNano() + int64(id)) // different seed per client--- not needed now rand.Intn automatically create random account id for each clients not same account id or same operation like account 1 withdraw 100 client 1 , account 1 withdraaw 100 client 2 --- this doesn't happen 
 
     fmt.Printf("Client %d started\n", id)
 

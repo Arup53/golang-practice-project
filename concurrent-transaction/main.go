@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 type BankAccount struct {
@@ -170,6 +171,10 @@ func fanInResults(cs ...chan string) <-chan string {
 func client(id int, trxChan chan <-Transaction, accounts []int, wg *sync.WaitGroup){
 	defer wg.Done()
 
+	rand.Seed(time.Now().UnixNano() + int64(id)) // different seed per client
+
+    fmt.Printf("Client %d started\n", id)
+
 	for i:=0; i<5; i++{
 		accID := accounts[rand.Intn(len(accounts))]
 		txnType := []string{"deposit","withdraw"}[rand.Intn(2)]
@@ -185,8 +190,11 @@ func client(id int, trxChan chan <-Transaction, accounts []int, wg *sync.WaitGro
 		}
 
 		res := <-resultChan // blocks the next line execution until a value is received in this receiving channel , here, resultChan  is receving channel 
-		fmt.Printf("Client %d got result: %s\n", id, res)
+		// fmt.Printf("Client %d got result: %s\n", id, res)
+		 fmt.Printf("Client %d → Account %d, %s %d → %s\n",
+            id, accID, txnType, amount, res)
 	}
+	fmt.Printf("Client %d finished\n", id)
 }
 
 
@@ -241,7 +249,7 @@ func main() {
 		go client(i, trxChan, []int{1,2,3}, &wg)  // []int{1,2,3} this is just 3 account id i defined
 	}
 	wg.Wait()
-
+    fmt.Println("All clients finished.")
 	close(trxChan)
 }
 

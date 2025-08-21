@@ -72,6 +72,12 @@ func (acc *Account) accountOperation(wg *sync.WaitGroup,txnChan chan<- Transacti
 
 func main() {
 
+
+
+
+}
+
+
 	// koiArrays := []Koi{
 	// 	{Name: "blue",
 	// 		Origin: "osaka",
@@ -136,22 +142,23 @@ func main() {
 
 	// -------- object to channel message passing ------
     
-	txnChan := make(chan Transaction)
-    var wg sync.WaitGroup
+	// txnChan := make(chan Transaction)
+    // var wg sync.WaitGroup
 
-	user1 := Account{ID: 2, balance: 2000}
-	user2 := Account{ID: 1, balance: 100}
-	user3 := Account{ID: 3, balance: 5000}
+	// user1 := Account{ID: 2, balance: 2000}
+	// user2 := Account{ID: 1, balance: 100}
+	// user3 := Account{ID: 3, balance: 5000}
     
-	go testChannelAsArgumentMultipleValueReceiver(txnChan)
-    wg.Add(3)
-	go user1.accountOperation(&wg,txnChan, "withdraw", 500)
-	go user2.accountOperation(&wg,txnChan, "deposit",1000)
-	go user3.accountOperation(&wg,txnChan, "withdraw",2000)
+	// go testChannelAsArgumentMultipleValueReceiver(txnChan)
+    // wg.Add(3)
+	// go user1.accountOperation(&wg,txnChan, "withdraw", 500)
+	// go user2.accountOperation(&wg,txnChan, "deposit",1000)
+	// go user3.accountOperation(&wg,txnChan, "withdraw",2000)
 
 	
-	wg.Wait()
-	close(txnChan)
+	// wg.Wait()
+	// close(txnChan)
 	
-	fmt.Println("All transaction done")
-}
+	// fmt.Println("All transaction done")
+
+	

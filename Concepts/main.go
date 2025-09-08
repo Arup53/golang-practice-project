@@ -72,7 +72,7 @@ func (acc *Account) accountOperation(wg *sync.WaitGroup,txnChan chan<- Transacti
 
 func main() {
 
-
+	// struct is a structure that holds multiple data/ different types of data
 
 
 }
